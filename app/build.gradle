@@ -1,16 +1,18 @@
 plugins {
+    id 'application'
     alias(libs.plugins.shadow)
 }
 
 repositories {
     mavenCentral()
+    maven { url 'https://www.jitpack.io' }
 }
 
 dependencies {
-    implementation libs.jdk
-    implementation libs.sqlite
-    implementation libs.logging
-    implementation libs.guava
+    implementation libs.bundles.jda
+    implementation libs.bundles.sqlite
+    implementation libs.bundles.logging
+    implementation libs.bundles.guava
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

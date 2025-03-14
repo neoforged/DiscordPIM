@@ -9,7 +9,7 @@
 			"installMaven": "true",
 			"mavenVersion": "3.8.6",
 			"installGradle": "true",
-            "gradleVersion": "8.10"
+            "gradleVersion": "8.13"
         },
         "ghcr.io/devcontainers/features/node:1": {
             "version": "22"
