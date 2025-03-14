@@ -2,7 +2,24 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
+JDK = "5.3.+"
+logback = "1.5.6"
+arbits-sqlite = "1.0.8"
 guava = "33.2.1-jre"
+shadow = "8.3.1"
 
 [libraries]
+JDK = { module = "net.dv8tion:JDA", version.ref = "JDK" }
+logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+arbits-sqlite = { module = "com.github.artbits:sqlite-java", version.ref = "arbits-sqlite" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
+
+
+[bundles]
+jdk = [ "JDK" ]
+logging = [ "logback" ]
+sqlite = [ "arbits-sqlite" ]
+guava = [ "guava" ]
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

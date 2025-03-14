@@ -34,5 +34,9 @@
                 "ms-azuretools.vscode-docker"
             ]
         }
-    }
+    },
+
+    "forwardPorts": [
+        3000
+    ]
 }
