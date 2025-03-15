@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.neoforged.discord.bots.pim.dba.DBA;
 import net.neoforged.discord.bots.pim.dba.model.PendingRoleRequest;
 import org.jetbrains.annotations.NotNull;
@@ -57,45 +58,49 @@ public class PimRoleRequestHandler extends ListenerAdapter {
             event.getGuild().addRoleToMember(event.getMember(), role).queue();
             event.getHook().editOriginal("Role has been assigned!").queue();
         } else {
-            var request = dba.getPendingRoleRequest(role.getName(), event.getMember().getIdLong());
+            var request = dba.getPendingRoleRequest(role.getName(), event.getUser().getIdLong());
             if (request != null) {
                 LOGGER.warn("PIM Request was already pending for role {}", role.getName());
                 event.getHook().editOriginal("You already have a request pending for this role!").queue();
                 return;
             }
 
-            request = dba.createPendingRoleRequest(role.getName(), event.getMember().getIdLong(), reason);
+            request = dba.createPendingRoleRequest(role.getName(), event.getUser().getIdLong(), reason);
 
             var finalRequest = request;
             Objects.requireNonNull(event.getGuild().getTextChannelById(roleConfiguration.approvalChannelId)).createThreadChannel("%s -> %s".formatted(role.getName(), event.getMember().getEffectiveName()), true)
                     .setInvitable(false)
                     .queue(
-                           thread -> {
-                               var approvalRole = Objects.requireNonNull(thread.getGuild().getRoleById(roleConfiguration.approvalRoleId));
+                            thread -> {
+                                var approvalRole = Objects.requireNonNull(thread.getGuild().getRoleById(roleConfiguration.approvalRoleId));
 
-                               finalRequest.approvalThreadId = thread.getIdLong();
-                               dba.updatePendingRoleRequest(finalRequest);
+                                finalRequest.approvalThreadId = thread.getIdLong();
+                                dba.updatePendingRoleRequest(finalRequest);
 
-                               event.getGuild().findMembersWithRoles(approvalRole)
-                                       .onError(error -> onErrorCreatingApprovalThread(event, error, finalRequest))
-                                       .onSuccess(members -> {
-                                           thread.sendMessage("## PIM Role: " + role.getName() + " has been requested by: " + event.getMember().getEffectiveName() + ".\nPlease validate the request and approve it.\n\n### Reason:\n" + reason).queue(
-                                                   success -> {
-                                                       //success.addReaction(Emoji.fromFormatted(":white_check_mark:")).queue();
-                                                       //success.addReaction(Emoji.fromFormatted(":x:")).queue();
+                                event.getGuild().findMembersWithRoles(approvalRole)
+                                        .onError(error -> onErrorCreatingApprovalThread(event, error, finalRequest))
+                                        .onSuccess(members -> {
+                                            thread.sendMessage("## PIM Role: " + role.getName() + " has been requested by: " + event.getMember().getEffectiveName() + ".\nPlease validate the request and approve it.\n\n### Reason:\n" + reason)
+                                                    .addActionRow(
+                                                            Button.success("approve-request/" + finalRequest.id(), "Approve Request"),
+                                                            Button.danger("reject-request/" + finalRequest.id(), "Reject Request")
+                                                    )
+                                                    .queue(
+                                                            message -> {
+                                                                var approvers = new ArrayList<>(List.copyOf(members));
+                                                                approvers.removeIf(member -> member.getIdLong() == event.getMember().getIdLong());
+                                                                approvers.forEach(approver -> thread.addThreadMember(approver).queue(
+                                                                        succes -> LOGGER.debug("Added approver {} to thread {}", approver.getEffectiveName(), thread.getName()),
+                                                                        error -> LOGGER.error("Failed to add approver {} to thread {}", approver.getEffectiveName(), thread.getName(), error)
+                                                                ));
 
-                                                       var approvers = new ArrayList<>(List.copyOf(members));
-                                                       approvers.removeIf(member -> member.getIdLong() == event.getMember().getIdLong());
-                                                       approvers.forEach(approver -> thread.addThreadMember(approver).queue(
-                                                               succes -> LOGGER.debug("Added approver {} to thread {}", approver.getEffectiveName(), thread.getName()),
-                                                               error -> LOGGER.error("Failed to add approver {} to thread {}", approver.getEffectiveName(), thread.getName(), error)
-                                                       ));
-                                                   },
-                                                   error -> onErrorCreatingApprovalThread(event, error, finalRequest)
-                                           );
-                                       });
-                           },
-                           failure -> onErrorCreatingApprovalThread(event, failure, finalRequest)
+                                                                event.getHook().editOriginal("PIM Request has been created. Please wait for approval!").queue();
+                                                            },
+                                                            error -> onErrorCreatingApprovalThread(event, error, finalRequest)
+                                                    );
+                                        });
+                            },
+                            failure -> onErrorCreatingApprovalThread(event, failure, finalRequest)
                     );
         }
     }

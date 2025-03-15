@@ -63,4 +63,8 @@ public class DBA {
         db.insert(configuration);
         return configuration;
     }
+
+    public PendingRoleRequest getPendingRoleRequestById(long l) {
+        return db.findOne(PendingRoleRequest.class, l);
+    }
 }

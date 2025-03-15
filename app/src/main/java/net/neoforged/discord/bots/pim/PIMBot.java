@@ -2,6 +2,9 @@ package net.neoforged.discord.bots.pim;
 
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import net.neoforged.discord.bots.pim.button.ApprovePIMRequestButtonHandler;
+import net.neoforged.discord.bots.pim.button.RejectPIMRequestButtonHandler;
 import net.neoforged.discord.bots.pim.commands.CommandRegistrar;
 import net.neoforged.discord.bots.pim.commands.PimConfigureRequestHandler;
 import net.neoforged.discord.bots.pim.commands.PimRoleRequestHandler;
@@ -28,8 +31,11 @@ public class PIMBot {
                 .enableIntents(
                         GatewayIntent.GUILD_MEMBERS,
                         GatewayIntent.MESSAGE_CONTENT)
+                .setMemberCachePolicy(MemberCachePolicy.ALL)
                 .addEventListeners(new PimRoleRequestHandler(dba))
                 .addEventListeners(new PimConfigureRequestHandler(dba))
+                .addEventListeners(new ApprovePIMRequestButtonHandler(dba))
+                .addEventListeners(new RejectPIMRequestButtonHandler(dba))
                 .build().awaitReady();
 
         CommandRegistrar.register(bot);
