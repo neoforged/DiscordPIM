@@ -44,7 +44,7 @@ public class PimConfigureRequestHandler extends ListenerAdapter {
         final var approvalChannel = Objects.requireNonNull(event.getOption("approval-channel")).getAsChannel();
         final var approversRole = Objects.requireNonNull(event.getOption("approvers-role")).getAsRole();
 
-        dba.createRoleConfiguration(role.getName(), requiresApproval, grantedTimeInSeconds, approvalChannel.getIdLong(), approversRole.getIdLong());
+        dba.createRoleConfiguration(role.getName(), role.getGuild().getIdLong(), requiresApproval, grantedTimeInSeconds, approvalChannel.getIdLong(), approversRole.getIdLong());
 
         event.getHook().editOriginal("PIM Configuration successfully updated!").queue();
     }

@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 public class RoleConfiguration extends DataSupport<RoleConfiguration> {
 
     public String name;
+    public long guildId;
     public boolean requiresApproval;
     public int grantedTimeInSeconds;
     public long approvalChannelId;

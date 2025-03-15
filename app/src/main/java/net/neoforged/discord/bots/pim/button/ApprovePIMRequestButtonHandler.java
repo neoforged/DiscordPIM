@@ -7,6 +7,8 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.neoforged.discord.bots.pim.dba.DBA;
 import net.neoforged.discord.bots.pim.dba.model.PendingRoleRequest;
+import net.neoforged.discord.bots.pim.dba.model.RoleConfiguration;
+import net.neoforged.discord.bots.pim.service.RoleAssignmentService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,9 +20,11 @@ public class ApprovePIMRequestButtonHandler extends ListenerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(ApprovePIMRequestButtonHandler.class);
 
     private final DBA dba;
+    private final RoleAssignmentService roleAssignmentService;
 
-    public ApprovePIMRequestButtonHandler(DBA dba) {
+    public ApprovePIMRequestButtonHandler(DBA dba, RoleAssignmentService roleAssignmentService) {
         this.dba = dba;
+        this.roleAssignmentService = roleAssignmentService;
     }
 
     @Override
@@ -41,9 +45,12 @@ public class ApprovePIMRequestButtonHandler extends ListenerAdapter {
                 return;
             }
 
-            final Role role = Objects.requireNonNull(event.getGuild()).getRolesByName(request.role, false).getFirst();
+            final RoleConfiguration roleConfiguration = dba.getRoleConfiguration(request.role, request.guildId);
             event.getJDA().retrieveUserById(request.userId).queue(user -> {
-                event.getGuild().addRoleToMember(user, role).queue(success2 -> {
+                roleAssignmentService.assignRoleTo(
+                        Objects.requireNonNull(roleConfiguration),
+                        user,
+                        Objects.requireNonNull(event.getGuild())).queue(success2 -> {
                     event.getHook().editOriginal("Request got approved by: " + Objects.requireNonNull(event.getMember()).getEffectiveName()).queue(
                             success3 -> {
                                 event.getChannel().asThreadChannel().getManager().setLocked(true).setArchived(true).queue(

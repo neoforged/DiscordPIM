@@ -13,6 +13,7 @@ dependencies {
     implementation libs.bundles.sqlite
     implementation libs.bundles.logging
     implementation libs.bundles.guava
+    implementation libs.bundles.wisp
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

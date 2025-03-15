@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.neoforged.discord.bots.pim.dba.DBA;
 import net.neoforged.discord.bots.pim.dba.model.PendingRoleRequest;
+import net.neoforged.discord.bots.pim.service.RoleAssignmentService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,9 +21,11 @@ public class PimRoleRequestHandler extends ListenerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(PimRoleRequestHandler.class);
 
     private final DBA dba;
+    private final RoleAssignmentService roleAssignmentService;
 
-    public PimRoleRequestHandler(DBA dba) {
+    public PimRoleRequestHandler(DBA dba, RoleAssignmentService roleAssignmentService) {
         this.dba = dba;
+        this.roleAssignmentService = roleAssignmentService;
     }
 
     @Override
@@ -46,7 +49,7 @@ public class PimRoleRequestHandler extends ListenerAdapter {
 
         final var role = Objects.requireNonNull(event.getOption("role")).getAsRole();
         final var reason = Objects.requireNonNull(event.getOption("reason")).getAsString();
-        final var roleConfiguration = dba.getRoleConfiguration(role.getName());
+        final var roleConfiguration = dba.getRoleConfiguration(role.getName(), role.getGuild().getIdLong());
 
         if (roleConfiguration == null) {
             LOGGER.warn("Role configuration not found for: {}", role.getName());
@@ -55,17 +58,20 @@ public class PimRoleRequestHandler extends ListenerAdapter {
         }
 
         if (!roleConfiguration.requiresApproval) {
-            event.getGuild().addRoleToMember(event.getMember(), role).queue();
-            event.getHook().editOriginal("Role has been assigned!").queue();
+            roleAssignmentService.assignRoleTo(roleConfiguration, event.getUser(), event.getGuild())
+                    .queue(
+                            ignored -> event.getHook().editOriginal("Role has been assigned!").queue()
+                    );
+
         } else {
-            var request = dba.getPendingRoleRequest(role.getName(), event.getUser().getIdLong());
+            var request = dba.getPendingRoleRequest(role.getName(), event.getUser().getIdLong(), role.getGuild().getIdLong());
             if (request != null) {
                 LOGGER.warn("PIM Request was already pending for role {}", role.getName());
                 event.getHook().editOriginal("You already have a request pending for this role!").queue();
                 return;
             }
 
-            request = dba.createPendingRoleRequest(role.getName(), event.getUser().getIdLong(), reason);
+            request = dba.createPendingRoleRequest(role.getName(), event.getUser().getIdLong(), reason, event.getGuild().getIdLong());
 
             var finalRequest = request;
             Objects.requireNonNull(event.getGuild().getTextChannelById(roleConfiguration.approvalChannelId)).createThreadChannel("%s -> %s".formatted(role.getName(), event.getMember().getEffectiveName()), true)

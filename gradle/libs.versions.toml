@@ -7,12 +7,14 @@ logback = "1.5.6"
 arbits-sqlite = "1.0.8"
 guava = "33.2.1-jre"
 shadow = "8.3.1"
+wisp = "2.5.0"
 
 [libraries]
 jda = { module = "net.dv8tion:JDA", version.ref = "jda" }
 logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 arbits-sqlite = { module = "com.github.artbits:sqlite-java", version.ref = "arbits-sqlite" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
+wisp = { module = "com.coreoz:wisp", version.ref = "wisp" }
 
 
 [bundles]
@@ -20,6 +22,7 @@ jda = ["jda"]
 logging = [ "logback" ]
 sqlite = [ "arbits-sqlite" ]
 guava = [ "guava" ]
+wisp = [ "wisp" ]
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

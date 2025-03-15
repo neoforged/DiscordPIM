@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 
 public class PendingRoleRequest extends DataSupport<PendingRoleRequest> {
 
+    public long guildId;
     public String role;
     public long userId;
     public long approvalThreadId = -1;
