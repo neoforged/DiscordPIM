@@ -7,6 +7,9 @@ import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Internal handler which registers all commands that this bot supports.
+ */
 public class CommandRegistrar {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandRegistrar.class);

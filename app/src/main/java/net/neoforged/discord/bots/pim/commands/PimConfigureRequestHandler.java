@@ -9,6 +9,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
+/**
+ * Internal event handler listening for the /pim configure command to configure roles.
+ */
 public class PimConfigureRequestHandler extends ListenerAdapter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PimConfigureRequestHandler.class);
@@ -38,14 +41,46 @@ public class PimConfigureRequestHandler extends ListenerAdapter {
 
         event.deferReply().queue();
 
+        //Get all parameters.
         final var role = Objects.requireNonNull(event.getOption("role")).getAsRole();
         final var requiresApproval = Objects.requireNonNull(event.getOption("requires-approval")).getAsBoolean();
         final var grantedTimeInSeconds = Objects.requireNonNull(event.getOption("granted-time-in-seconds")).getAsInt();
         final var approvalChannel = Objects.requireNonNull(event.getOption("approval-channel")).getAsChannel();
         final var approversRole = Objects.requireNonNull(event.getOption("approvers-role")).getAsRole();
 
-        dba.createRoleConfiguration(role.getName(), role.getGuild().getIdLong(), requiresApproval, grantedTimeInSeconds, approvalChannel.getIdLong(), approversRole.getIdLong());
+        //Check if we have an existing.
+        final var existing = dba.getRoleConfiguration(role.getName(), event.getGuild().getIdLong());
 
-        event.getHook().editOriginal("PIM Configuration successfully updated!").queue();
+        if (existing == null) {
+            //Create an entirely new configuration
+            dba.createRoleConfiguration(role.getName(), role.getGuild().getIdLong(), requiresApproval, grantedTimeInSeconds, approvalChannel.getIdLong(), approversRole.getIdLong());
+            event.getHook().editOriginal("PIM Configuration successfully created!").queue();
+            LOGGER.info("Role configuration created for: {}, requiring approval: {}, granted for: {} seconds, approved in: {}, by {}",
+                    role.getName(),
+                    requiresApproval,
+                    grantedTimeInSeconds,
+                    approvalChannel.getName(),
+                    approversRole.getName()
+            );
+        } else {
+            //Update the existing.
+            existing.requiresApproval = requiresApproval;
+            existing.grantedTimeInSeconds = grantedTimeInSeconds;
+            existing.approvalChannelId = approvalChannel.getIdLong();
+            existing.approvalRoleId = approversRole.getIdLong();
+
+            dba.updateRoleConfiguration(existing);
+            event.getHook().editOriginal("PIM Configuration successfully updated!").queue();
+
+            LOGGER.info("Role configuration updated for: {}, requiring approval: {}, granted for: {} seconds, approved in: {}, by {}",
+                    role.getName(),
+                    requiresApproval,
+                    grantedTimeInSeconds,
+                    approvalChannel.getName(),
+                    approversRole.getName()
+            );
+        }
+
+
     }
 }

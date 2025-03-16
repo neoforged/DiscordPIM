@@ -24,27 +24,27 @@ public class DBA {
     }
 
     @Nullable
-    public RoleConfiguration getRoleConfiguration(String id, long guildId) {
-        LOGGER.debug("Getting role configuration for id {},  {}", id, guildId);
-        return this.db.first(RoleConfiguration.class, "name = ? && guildId = ?", id, guildId);
+    public RoleConfiguration getRoleConfiguration(String name, long guildId) {
+        LOGGER.debug("Getting role configuration for name {},  {}", name, guildId);
+        return this.db.first(RoleConfiguration.class, "name = ? && guildId = ?", name, guildId);
     }
 
     @NotNull
     public PendingRoleRequest createPendingRoleRequest(String role, long userId, String reason, long guildId) {
-        LOGGER.info("Creating new pending role request for role {}, {}, {}, {}", role, userId, reason, guildId);
+        LOGGER.debug("Creating new pending role request for role {}, {}, {}, {}", role, userId, reason, guildId);
         var request = new PendingRoleRequest(p -> {p.role = role; p.userId = userId; p.reason = reason; p.guildId = guildId;});
         db.insert(request);
         return request;
     }
 
     public void updatePendingRoleRequest(PendingRoleRequest request) {
-        LOGGER.info("Updating pending role request for role {}, {}, {}, {}, {}", request.role, request.guildId, request.userId, request.reason, request.approvalThreadId);
+        LOGGER.debug("Updating pending role request for role {}, {}, {}, {}, {}", request.role, request.guildId, request.userId, request.reason, request.approvalThreadId);
         db.update(request);
     }
 
 
     public void deletePendingRoleRequest(PendingRoleRequest request) {
-        LOGGER.warn("Deleting pending role request: {}, {}, {}", request.role, request.userId, request.guildId);
+        LOGGER.debug("Deleting pending role request: {}, {}, {}", request.role, request.userId, request.guildId);
         db.delete(PendingRoleRequest.class, request.id());
     }
 
@@ -55,7 +55,7 @@ public class DBA {
     }
 
     public RoleConfiguration createRoleConfiguration(String name, long guildId, boolean requiresApproval, int grantedTimeInSeconds, long approvalChannelId, long approvesRoleId) {
-        LOGGER.warn("Creating role configuration for: {}, {}, {}, {}, {}, {}", name, guildId, requiresApproval, grantedTimeInSeconds, approvalChannelId, approvesRoleId);
+        LOGGER.debug("Creating role configuration for: {}, {}, {}, {}, {}, {}", name, guildId, requiresApproval, grantedTimeInSeconds, approvalChannelId, approvesRoleId);
         final var configuration = new RoleConfiguration(p -> {
             p.name = name;
             p.guildId = guildId;
@@ -69,21 +69,29 @@ public class DBA {
     }
 
     public PendingRoleRequest getPendingRoleRequestById(long id) {
+        LOGGER.debug("Getting pending role request for id {}", id);
         return db.findOne(PendingRoleRequest.class, id);
     }
 
     public void createRoleRemovalJob(String roleName, long guildId, long roleId, long userId, int grantedTimeInSeconds) {
-        LOGGER.warn("Adding role removal job for role {}, {}, {}, {}, {}", roleName, guildId, roleId, userId, grantedTimeInSeconds);
+        LOGGER.debug("Adding role removal job for role {}, {}, {}, {}, {}", roleName, guildId, roleId, userId, grantedTimeInSeconds);
         db.insert(new RoleRemovalJob(p -> {p.roleName = roleName; p.guildId = guildId; p.roleId = roleId; p.userId = userId; p.grantedTimeInSeconds = grantedTimeInSeconds;}));
     }
 
     public List<RoleRemovalJob> getRemovalJobsToRun() {
+        LOGGER.debug("Getting role removal jobs to run: {}", System.currentTimeMillis());
         return db.find(RoleRemovalJob.class, options -> {
             options.where("createdAt + (grantedTimeInSeconds * 1000) < ?",  System.currentTimeMillis());
         });
     }
 
     public void removeRemovalJob(RoleRemovalJob job) {
+        LOGGER.debug("Removing role removal job {}", job.toString());
         db.delete(RoleRemovalJob.class, job.id());
+    }
+
+    public void updateRoleConfiguration(RoleConfiguration existing) {
+        LOGGER.debug("Updating role configuration: {}", existing.toJson());
+        db.update(existing);
     }
 }

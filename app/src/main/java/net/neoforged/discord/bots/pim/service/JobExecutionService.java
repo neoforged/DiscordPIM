@@ -14,6 +14,10 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.Objects;
 
+/**
+ * Internal background service which regularly checks if there are any jobs to run.
+ * Currently only runs role removal jobs.
+ */
 public class JobExecutionService implements EventListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JobExecutionService.class);
@@ -26,6 +30,7 @@ public class JobExecutionService implements EventListener {
         this.dba = dba;
         this.jda = jda;
 
+        //We run exactly one minute after the completion of our last job.
         scheduler.schedule(
                 "PIM-Jobs",
                 this::runJobs,
@@ -34,18 +39,28 @@ public class JobExecutionService implements EventListener {
     }
 
     private void runJobs() {
+        //Get all jobs to remove.
         final var removalJobsToRun = dba.getRemovalJobsToRun();
         removalJobsToRun.forEach(job -> {
+            //Get the guild in which we operate from the job, and the member of that guild of which we need to remove the role.
             final var guild = jda.getGuildById(job.guildId);
             Objects.requireNonNull(guild).retrieveMemberById(job.userId).queue(member -> {
+                //Get the role.
                 final var role = guild.getRoleById(job.roleId);
+
+                //Check if the member still has the role.
                 if (member.getRoles().contains(role)) {
+                    //User still has the role, schedule the removal on discords API.
                     guild.removeRoleFromMember(member, Objects.requireNonNull(role)).queue(
                             success -> {
+                                //Role removed, remove it from the DB.
                                 LOGGER.warn("Removed role {} from member {}", job.roleId, member);
                                 dba.removeRemovalJob(job);
                             }
                     );
+                } else {
+                    //User already relinquished the role, so lets remove the job.
+                    dba.removeRemovalJob(job);
                 }
             });
         });
@@ -53,7 +68,10 @@ public class JobExecutionService implements EventListener {
 
     @Override
     public void onEvent(@NotNull GenericEvent event) {
-        if (event instanceof ShutdownEvent shutdownEvent) {
+        if (event instanceof ShutdownEvent) {
+            //We monitor for shutdown events, this has two advantages:
+            //1) We are properly held in memory so our scheduler can properly live on because we are in the event handler list.
+            //2) Our background threads are properly stopped when the bot stops.
             scheduler.gracefullyShutdown();
         }
     }

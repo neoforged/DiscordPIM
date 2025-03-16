@@ -15,6 +15,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
+/**
+ * Internal event handler which watches for button presses that indicate the approval of a role request.
+ */
 public class ApprovePIMRequestButtonHandler extends ListenerAdapter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApprovePIMRequestButtonHandler.class);
@@ -34,36 +37,50 @@ public class ApprovePIMRequestButtonHandler extends ListenerAdapter {
             return;
         }
 
-        LOGGER.debug("Approve request button pressed");
+        final long requestId = Long.parseLong(event.getButton().getId().substring("approve-request/".length()));
+
+        LOGGER.debug("Approve button was pressed for request: {}", requestId);
         event.deferReply().queue(success -> {
-            final long requestId = Long.parseLong(event.getButton().getId().substring("approve-request/".length()));
             final PendingRoleRequest request = dba.getPendingRoleRequestById(requestId);
 
+            //Validate that the user is not self approving.
             if (request.userId == Objects.requireNonNull(event.getMember()).getIdLong()) {
-                LOGGER.warn("Approve request button pressed");
+                LOGGER.warn("{} attempted to approve their own request: {}", event.getMember().getEffectiveName(), request.role);
                 event.getHook().editOriginal("You can not approve your own request!").queue();
                 return;
             }
 
+            //Get the configuration for the role that the user is interested in.
             final RoleConfiguration roleConfiguration = dba.getRoleConfiguration(request.role, request.guildId);
+
+            //Get the user from the central JDA instance.
+            //Noteworthy: The event is triggered by a different user, so we can not use its member or user information.
             event.getJDA().retrieveUserById(request.userId).queue(user -> {
+                LOGGER.info("Approving role request of: {}, for: {}, by: {}", request.role, user.getName(), event.getMember().getEffectiveName());
+
+                //Use our internal service to assign the role, this will also create the relevant removal job.
+                //And send a DM to the requesting user that his role request has been approved.
                 roleAssignmentService.assignRoleTo(
                         Objects.requireNonNull(roleConfiguration),
                         user,
                         Objects.requireNonNull(event.getGuild())).queue(success2 -> {
+
+                    //Notify the approver that the request has been approved.
                     event.getHook().editOriginal("Request got approved by: " + Objects.requireNonNull(event.getMember()).getEffectiveName()).queue(
                             success3 -> {
+                                //Lock the thread so that it is preserved for auditing if need be.
                                 event.getChannel().asThreadChannel().getManager().setLocked(true).setArchived(true).queue(
                                         success4 -> {
-                                            LOGGER.warn("Role request got approved.");
+                                            //Delete the role request from the DB.
                                             dba.deletePendingRoleRequest(request);
+
+                                            LOGGER.info("Role request of: {}, for: {}, by: {} has been approved. Processing complete.", request.role, user.getName(), event.getMember().getEffectiveName());
                                         }
                                 );
                             }
                     );
                 });
             });
-
         });
     }
 }
