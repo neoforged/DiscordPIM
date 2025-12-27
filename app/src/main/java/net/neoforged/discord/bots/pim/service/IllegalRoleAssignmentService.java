@@ -12,59 +12,94 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class IllegalRoleAssignmentService
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(IllegalRoleAssignmentService.class);
 
-    private final        DBA    dba;
+    private final DBA    dba;
     @Nullable
     private final String loggingChannelId;
 
-    public IllegalRoleAssignmentService(final DBA dba, @Nullable final String loggingChannelId) {
+    public IllegalRoleAssignmentService(final DBA dba, @Nullable final String loggingChannelId)
+    {
         this.dba = dba;
         this.loggingChannelId = loggingChannelId;
     }
 
-    public void onStartup(JDA bot) {
+    public void onStartup(JDA bot)
+    {
         LOGGER.info("Startup role assignment invalidation triggered...");
         var roleConfigurations = dba.getRoleConfigurations();
-        if (roleConfigurations.isEmpty()) {
+        if (roleConfigurations.isEmpty())
+        {
             LOGGER.warn("No role configurations found to invalidate.");
             return;
-        } else {
+        }
+        else
+        {
             LOGGER.info("Processing: {} roles...", roleConfigurations.size());
+        }
+
+        var guilds = roleConfigurations
+            .stream()
+            .map(r -> r.guildId)
+            .collect(Collectors.toSet());
+
+        for (final Long guildId : guilds)
+        {
+            var guild = bot.getGuildById(guildId);
+            if (guild == null)
+            {
+                LOGGER.info("Guild with id: {} does not exist!", guildId);
+                return;
+            }
+
+            LOGGER.info("Loading membercache for: {}...", guild.getName());
+
+            //Normally we don't call get on this, but we are 100% sure not on the event thread
+            //as this is invoked from the main thread!
+            //So we hold the main thread while we load the members of the guild
+            //We need to do this so that the member cache is filled
+            guild.loadMembers().get();
         }
 
         roleConfigurations.forEach(roleConfig -> {
             LOGGER.info("Validating role configuration: {}", roleConfig.name);
             var guild = bot.getGuildById(roleConfig.guildId);
-            if (guild == null) {
+            if (guild == null)
+            {
                 LOGGER.info("Guild with id: {} does not exist!", roleConfig.guildId);
                 return;
             }
-            guild.loadMembers().onSuccess(members -> {
-                var roles = guild.getRolesByName(roleConfig.name, false);
-                if (roles.isEmpty()) {
-                    LOGGER.error("Could not find roles in guild: {} with name: {}", guild.getName(), roleConfig.name);
-                    return;
-                } else {
-                    LOGGER.info("Checking: {} active roles for invalidation...", roles.size());
+
+            var roles = guild.getRolesByName(roleConfig.name, false);
+            if (roles.isEmpty())
+            {
+                LOGGER.error("Could not find roles in guild: {} with name: {}", guild.getName(), roleConfig.name);
+                return;
+            }
+            else
+            {
+                LOGGER.info("Checking: {} active roles for invalidation...", roles.size());
+            }
+
+            roles.forEach(role -> {
+                LOGGER.info("Invalidating role: {}", role.getName());
+
+                var membersWithRole = guild.getMembersWithRoles(role);
+                if (membersWithRole.isEmpty())
+                {
+                    LOGGER.info("No members found with role: {}", role.getName());
                 }
-
-                roles.forEach(role -> {
-                    LOGGER.info("Invalidating role: {}", role.getName());
-
-                    var membersWithRole = guild.getMembersWithRoles(role);
-                    if (membersWithRole.isEmpty()) {
-                        LOGGER.info("No members found with role: {}", role.getName());
-                    } else {
-                        LOGGER.warn("Checking: {} for validation...", membersWithRole.size());
-                    }
-                    membersWithRole.forEach(member -> {
-                        LOGGER.info("Checking member: {} for role: {} in validation...", member.getEffectiveName(), role.getName());
-                        checkAndHandle(member.getUser(), role, guild);
-                    });
+                else
+                {
+                    LOGGER.warn("Checking: {} for validation...", membersWithRole.size());
+                }
+                membersWithRole.forEach(member -> {
+                    LOGGER.info("Checking member: {} for role: {} in validation...", member.getEffectiveName(), role.getName());
+                    checkAndHandle(member.getUser(), role, guild);
                 });
             });
         });
@@ -81,7 +116,8 @@ public class IllegalRoleAssignmentService
         LOGGER.info("Role configuration upsertion invalidation completed.");
     }
 
-    public void checkAndHandle(User user, Role role, Guild guild) {
+    public void checkAndHandle(User user, Role role, Guild guild)
+    {
         LOGGER.info("Checking role assignment for: {} role: {} in: {}", user.getName(), role.getName(), guild.getName());
         if (!isManagedRole(role))
         {
@@ -102,7 +138,8 @@ public class IllegalRoleAssignmentService
                 LOGGER.warn("Removed unauthorized role from user: {} ({}). Role: {}", user.getIdLong(), user.getName(), role.getName());
             }
         );
-        if (loggingChannelId != null) {
+        if (loggingChannelId != null)
+        {
             Objects.requireNonNull(guild.getTextChannelById(loggingChannelId))
                 .sendMessageEmbeds(new EmbedBuilder()
                     .setTitle("User: " + user.getName() + " tried to add protected role!")
@@ -113,15 +150,18 @@ public class IllegalRoleAssignmentService
         }
     }
 
-    private boolean isManagedRole(Role role) {
+    private boolean isManagedRole(Role role)
+    {
         return dba.getRoleConfiguration(role.getName(), role.getGuild().getIdLong()) != null;
     }
 
-    private boolean wasApproved(User user, Role role) {
+    private boolean wasApproved(User user, Role role)
+    {
         var openRequests = dba.getOpenRemovalJobs();
         for (final RoleRemovalJob request : openRequests)
         {
-            if (request.roleId == role.getIdLong() && request.userId == user.getIdLong()) {
+            if (request.roleId == role.getIdLong() && request.userId == user.getIdLong())
+            {
                 return true;
             }
         }
