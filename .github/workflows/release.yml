@@ -179,7 +179,7 @@ jobs:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Update Helm Chart Version
-        working-directory: chart/tableau
+        working-directory: chart/discordpim
         run: |
           # The current version is stored in inputs.tag, we need to rewrite the charts.yaml file with the new version
           # However we can only replace the version: property if it is at the start of a line
@@ -190,7 +190,7 @@ jobs:
           sed -i "1s/version: v\(.*\)/version: \1/g" Chart.yaml
 
       - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
+        uses: helm/chart-releaser-action@v1.7.0
         with:
           charts_dir: 'chart'
         env:
