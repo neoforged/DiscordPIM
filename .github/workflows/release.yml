@@ -46,7 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: app
+        shell: bash
+        working-directory: ./app
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -67,7 +68,9 @@ jobs:
 
   build-app-docker:
     name: Build App Docker Image
-    needs: build-app
+    needs:
+      - build-app
+      - tag
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -112,7 +115,8 @@ jobs:
 
   build-docs-docker:
     name: Build Docs Docker Image
-    needs: build-app
+    needs:
+      - tag
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
