@@ -1,4 +1,4 @@
-{$DOCUSAURUS_DOMAIN:localhost} {
+http://{$DOCUSAURUS_DOMAIN:localhost} {
   root * /var/docusaurus
   encode gzip
   try_files {path} /index.html
