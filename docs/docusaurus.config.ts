@@ -7,7 +7,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'DiscordPIM',
   tagline: 'Privileged Identity Management in Discord',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/icon.ico',
 
   url: 'https://discordpim.neoforged.net',
   baseUrl: '/',
@@ -25,8 +25,9 @@ const config: Config = {
       'classic',
       {
         docs: {
-          sidebarPath: './sidebars.ts',
+          routeBasePath: '/', // Serve the docs at the site's root
         },
+        blog: false, // Optional: disable the blog plugin
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -36,20 +37,14 @@ const config: Config = {
 
   themeConfig: {
     // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/social-card.jpg',
     navbar: {
       title: 'DiscordPIM - Docs',
       logo: {
         alt: 'DiscordPIM',
-        src: 'img/logo.svg',
+        src: 'img/logo.png',
       },
       items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: 'Tutorial',
-        },
         {
           href: 'https://github.com/neoforged/DiscordPIM',
           label: 'GitHub',

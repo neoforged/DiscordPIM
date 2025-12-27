@@ -66,7 +66,7 @@ public class PimRoleRequestHandler extends ListenerAdapter {
         if (!roleConfiguration.requiresApproval) {
             //No approval required, immediately assign.
             //This will internally send a DM to the user, so that suffices, but to complete the command we also update the original hook.
-            roleAssignmentService.assignRoleTo(roleConfiguration, event.getUser(), event.getGuild())
+            roleAssignmentService.assignRoleTo(roleConfiguration, event.getUser(), Objects.requireNonNull(event.getGuild()))
                     .queue(
                             ignored -> event.getHook().editOriginal("Role has been assigned!").queue()
                     );
