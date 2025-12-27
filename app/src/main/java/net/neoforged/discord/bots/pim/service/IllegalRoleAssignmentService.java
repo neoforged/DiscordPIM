@@ -28,30 +28,28 @@ public class IllegalRoleAssignmentService
 
     public void onStartup(JDA bot) {
         LOGGER.info("Startup role assignment invalidation triggered...");
-        var guilds = bot.getGuilds();
-        if (guilds.isEmpty()) {
-            LOGGER.warn("Bot not connected to any guild!");
+        var roleConfigurations = dba.getRoleConfigurations();
+        if (roleConfigurations.isEmpty()) {
+            LOGGER.warn("No role configurations found to invalidate.");
             return;
         }
 
-        guilds.forEach(guild -> {
-            var roleConfigurations = dba.getRoleConfigurations(guild.getIdLong());
-            if (roleConfigurations.isEmpty()) {
-                LOGGER.warn("No role configurations for guild: {}", guild.getName());
+        roleConfigurations.forEach(roleConfig -> {
+            var guild = bot.getGuildById(roleConfig.guildId);
+            if (guild == null) {
+                LOGGER.info("Guild with id: {} does not exist!", roleConfig.guildId);
                 return;
             }
 
-            roleConfigurations.forEach(roleConfig -> {
-                var roles = guild.getRolesByName(roleConfig.name, false);
-                if (roles.isEmpty()) {
-                    LOGGER.error("Could not find roles in guild: {} with name: {}", guild.getName(), roleConfig.name);
-                    return;
-                }
+            var roles = guild.getRolesByName(roleConfig.name, false);
+            if (roles.isEmpty()) {
+                LOGGER.error("Could not find roles in guild: {} with name: {}", guild.getName(), roleConfig.name);
+                return;
+            }
 
-                roles.forEach(role -> {
-                    guild.getMembersWithRoles(role).forEach(member -> {
-                        checkAndHandle(member.getUser(), role, guild);
-                    });
+            roles.forEach(role -> {
+                guild.getMembersWithRoles(role).forEach(member -> {
+                    checkAndHandle(member.getUser(), role, guild);
                 });
             });
         });
