@@ -32,9 +32,12 @@ public class IllegalRoleAssignmentService
         if (roleConfigurations.isEmpty()) {
             LOGGER.warn("No role configurations found to invalidate.");
             return;
+        } else {
+            LOGGER.info("Processing: {} roles...", roleConfigurations.size());
         }
 
         roleConfigurations.forEach(roleConfig -> {
+            LOGGER.info("Validating role configuration: {}", roleConfig.name);
             var guild = bot.getGuildById(roleConfig.guildId);
             if (guild == null) {
                 LOGGER.info("Guild with id: {} does not exist!", roleConfig.guildId);
@@ -45,10 +48,21 @@ public class IllegalRoleAssignmentService
             if (roles.isEmpty()) {
                 LOGGER.error("Could not find roles in guild: {} with name: {}", guild.getName(), roleConfig.name);
                 return;
+            } else {
+                LOGGER.info("Checking: {} active roles for invalidation...", roles.size());
             }
 
             roles.forEach(role -> {
-                guild.getMembersWithRoles(role).forEach(member -> {
+                LOGGER.info("Invalidating role: {}", role.getName());
+
+                var membersWithRole = guild.getMembersWithRoles(role);
+                if (membersWithRole.isEmpty()) {
+                    LOGGER.info("No members found with role: {}", role.getName());
+                } else {
+                    LOGGER.warn("Checking: {} for validation...", membersWithRole.size());
+                }
+                membersWithRole.forEach(member -> {
+                    LOGGER.info("Checking member: {} for role: {} in validation...", member.getEffectiveName(), role.getName());
                     checkAndHandle(member.getUser(), role, guild);
                 });
             });
