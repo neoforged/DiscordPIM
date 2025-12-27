@@ -183,11 +183,13 @@ jobs:
         run: |
           # The current version is stored in inputs.tag, we need to rewrite the charts.yaml file with the new version
           # However we can only replace the version: property if it is at the start of a line
-          echo "Updating Chart.yaml version to ${{ needs.tag.outputs.tag }}"
+          echo "Updating Chart.yaml versions to ${{ needs.tag.outputs.tag }}"
           sed -i "s/^version: \(.*\)/version: ${{ needs.tag.outputs.tag }}/g" Chart.yaml
+          sed -i "s/^appVersion: \(.*\)/appVersion: ${{ needs.tag.outputs.tag }}/g" Chart.yaml
 
           # Now this inserted a version with a v prefix, we need to remove only that initial v
           sed -i "1s/version: v\(.*\)/version: \1/g" Chart.yaml
+          sed -i "1s/appVersion: v\(.*\)/appVersion: \1/g" Chart.yaml
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.7.0
