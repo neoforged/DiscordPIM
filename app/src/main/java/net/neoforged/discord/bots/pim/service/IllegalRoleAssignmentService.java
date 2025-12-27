@@ -3,7 +3,6 @@ package net.neoforged.discord.bots.pim.service;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.neoforged.discord.bots.pim.dba.DBA;
@@ -13,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.function.Predicate;
 
 public class IllegalRoleAssignmentService
 {
@@ -30,9 +28,26 @@ public class IllegalRoleAssignmentService
 
     public void onStartup(JDA bot) {
         LOGGER.info("Startup role assignment invalidation triggered...");
-        bot.getGuilds().forEach(guild -> {
-            dba.getRoleConfigurations().forEach(roleConfig -> {
+        var guilds = bot.getGuilds();
+        if (guilds.isEmpty()) {
+            LOGGER.warn("Bot not connected to any guild!");
+            return;
+        }
+
+        guilds.forEach(guild -> {
+            var roleConfigurations = dba.getRoleConfigurations(guild.getIdLong());
+            if (roleConfigurations.isEmpty()) {
+                LOGGER.warn("No role configurations for guild: {}", guild.getName());
+                return;
+            }
+
+            roleConfigurations.forEach(roleConfig -> {
                 var roles = guild.getRolesByName(roleConfig.name, false);
+                if (roles.isEmpty()) {
+                    LOGGER.error("Could not find roles in guild: {} with name: {}", guild.getName(), roleConfig.name);
+                    return;
+                }
+
                 roles.forEach(role -> {
                     guild.getMembersWithRoles(role).forEach(member -> {
                         checkAndHandle(member.getUser(), role, guild);

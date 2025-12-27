@@ -67,10 +67,12 @@ public class DBA {
         db.insert(configuration);
     }
 
-    public List<RoleConfiguration> getRoleConfigurations()
+    public List<RoleConfiguration> getRoleConfigurations(final long guildId)
     {
         LOGGER.debug("Retrieving all role configurations");
-        return db.findAll(RoleConfiguration.class);
+        return db.findAll(RoleConfiguration.class).stream()
+            .filter(rc -> rc.guildId == guildId)
+            .toList();
     }
 
     public PendingRoleRequest getPendingRoleRequestById(long id) {
