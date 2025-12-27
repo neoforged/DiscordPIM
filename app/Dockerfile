@@ -6,7 +6,7 @@ ADD https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.1%
 RUN tar -xzvf /opt/jdk/OpenJDK21U-jdk_x64_alpine-linux_hotspot_21.0.1_12.tar.gz -C /opt/jdk/
 RUN ["jlink", "--compress=2", \
      "--module-path", "/opt/jdk/jdk-21.0.1+12/jmods/", \
-     "--add-modules", "java.base,java.logging,java.naming,java.desktop,jdk.unsupported", \
+     "--add-modules", "java.base,java.logging,java.naming,java.desktop,jdk.unsupported,java.sql", \
      "--no-header-files", "--no-man-pages", \
      "--output", "/runtime"]
 
