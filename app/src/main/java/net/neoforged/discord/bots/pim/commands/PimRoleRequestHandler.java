@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.neoforged.discord.bots.pim.dba.DBA;
 import net.neoforged.discord.bots.pim.dba.model.PendingRoleRequest;
+import net.neoforged.discord.bots.pim.service.EventLoggingService;
 import net.neoforged.discord.bots.pim.service.RoleAssignmentService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -26,11 +27,13 @@ public class PimRoleRequestHandler extends ListenerAdapter
 
     private final DBA                   dba;
     private final RoleAssignmentService roleAssignmentService;
+    private final EventLoggingService eventLoggingService;
 
-    public PimRoleRequestHandler(DBA dba, RoleAssignmentService roleAssignmentService)
+    public PimRoleRequestHandler(DBA dba, RoleAssignmentService roleAssignmentService, final EventLoggingService eventLoggingService)
     {
         this.dba = dba;
         this.roleAssignmentService = roleAssignmentService;
+        this.eventLoggingService = eventLoggingService;
     }
 
     @Override
@@ -78,6 +81,11 @@ public class PimRoleRequestHandler extends ListenerAdapter
                 .queue(
                     ignored -> event.getHook().editOriginal("Role has been assigned!").queue()
                 );
+
+            eventLoggingService.postEvent(embed -> embed.setTitle("Role request immediately granted")
+                .addField("Requested by", event.getUser().getName(), false)
+                .addField("Role", roleConfiguration.name, false)
+                .addField("Justification", reason, false));
         }
         else
         {
@@ -118,9 +126,9 @@ public class PimRoleRequestHandler extends ListenerAdapter
                                     .addComponents(
                                         ActionRow.of(
                                             //Add the buttons for approval and rejection.
-                                            Button.success("approve-request/" + finalRequest.id(), "Approve Request")
+                                            Button.success("approve-request/" + finalRequest.getId(), "Approve Request")
                                                 .withEmoji(Emoji.fromUnicode("U+1F44D")),
-                                            Button.danger("reject-request/" + finalRequest.id(), "Reject Request")
+                                            Button.danger("reject-request/" + finalRequest.getId(), "Reject Request")
                                                 .withEmoji(Emoji.fromUnicode("U+1F44E"))
                                         )
                                     )
@@ -136,6 +144,12 @@ public class PimRoleRequestHandler extends ListenerAdapter
 
                                             //Notify the requester that his or her PIM request has been created and is awaiting approval.
                                             event.getHook().editOriginal("PIM Request has been created. Please wait for approval!").queue();
+
+
+                                            eventLoggingService.postEvent(embed -> embed.setTitle("Role request approval thread created. Awaiting approval...")
+                                                .addField("Requested by", event.getUser().getName(), false)
+                                                .addField("Role", roleConfiguration.name, false)
+                                                .addField("Justification", reason, false));
                                         },
                                         error -> onErrorCreatingApprovalThread(event, error, finalRequest)
                                     );

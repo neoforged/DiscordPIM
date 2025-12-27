@@ -11,6 +11,7 @@ import net.neoforged.discord.bots.pim.commands.CommandRegistrar;
 import net.neoforged.discord.bots.pim.commands.PimConfigureRequestHandler;
 import net.neoforged.discord.bots.pim.commands.PimRoleRequestHandler;
 import net.neoforged.discord.bots.pim.dba.DBA;
+import net.neoforged.discord.bots.pim.service.EventLoggingService;
 import net.neoforged.discord.bots.pim.service.IllegalRoleAssignmentService;
 import net.neoforged.discord.bots.pim.service.JobExecutionService;
 import net.neoforged.discord.bots.pim.service.RoleAssignmentMonitor;
@@ -45,7 +46,8 @@ public class PIMBot
 
         @Nullable final var loggingChannel = System.getenv("PIM_LOG_CHANNEL");
         if (loggingChannel == null) {
-            LOGGER.warn("No pim logging channel registered.");
+            LOGGER.error("Environment variable PIM_LOG_CHANNEL has not been set");
+            throw new IllegalStateException("Environment variable PIM_LOG_CHANNEL has not been set");
         } else {
             LOGGER.warn("Logging critical events to channel with id: {}", loggingChannel);
         }
@@ -53,28 +55,29 @@ public class PIMBot
         //Create the DB manager.
         final var dba = new DBA();
 
-        //Create our central services.
-        final var roleAssignmentService = new RoleAssignmentService(dba);
-        final var illegalAssignmentService = new IllegalRoleAssignmentService(dba, loggingChannel);
-
         //Create the bot.
         final var bot = JDABuilder.createDefault(token)
             .enableIntents(
                 GatewayIntent.GUILD_MEMBERS,
                 GatewayIntent.MESSAGE_CONTENT)
             .setMemberCachePolicy(MemberCachePolicy.ALL)
-            .addEventListeners(new PimRoleRequestHandler(dba, roleAssignmentService))
-            .addEventListeners(new PimConfigureRequestHandler(dba, illegalAssignmentService))
-            .addEventListeners(new ApprovePIMRequestButtonHandler(dba, roleAssignmentService))
-            .addEventListeners(new RejectPIMRequestButtonHandler(dba))
-            .addEventListeners(new RoleAssignmentMonitor(illegalAssignmentService))
             .setAutoReconnect(true)
             .setStatus(OnlineStatus.INVISIBLE)
             .setActivity(Activity.customStatus("Managing permissions..."))
             .build().awaitReady();
 
-        //Register the background handler, we can not do this in the builder as we need a JDA reference.
-        bot.addEventListener(new JobExecutionService(dba, bot));
+        //Create our central services.
+        final var eventLoggingService = new EventLoggingService(loggingChannel, bot);
+        final var roleAssignmentService = new RoleAssignmentService(dba, eventLoggingService);
+        final var illegalAssignmentService = new IllegalRoleAssignmentService(dba, eventLoggingService);
+
+        //Register the event handlers
+        bot.addEventListener(new PimRoleRequestHandler(dba, roleAssignmentService, eventLoggingService));
+        bot.addEventListener(new PimConfigureRequestHandler(dba, illegalAssignmentService, eventLoggingService));
+        bot.addEventListener(new ApprovePIMRequestButtonHandler(dba, roleAssignmentService, eventLoggingService));
+        bot.addEventListener(new RejectPIMRequestButtonHandler(dba, eventLoggingService));
+        bot.addEventListener(new RoleAssignmentMonitor(illegalAssignmentService));
+        bot.addEventListener(new JobExecutionService(dba, bot, eventLoggingService));
 
         CommandRegistrar.register(bot);
 

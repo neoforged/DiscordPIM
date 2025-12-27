@@ -17,9 +17,11 @@ public class RoleAssignmentService {
     private static final Logger LOGGER = LoggerFactory.getLogger(RoleAssignmentService.class);
 
     private final DBA dba;
+    private final EventLoggingService eventLoggingService;
 
-    public RoleAssignmentService(DBA dba) {
+    public RoleAssignmentService(DBA dba, final EventLoggingService eventLoggingService) {
         this.dba = dba;
+        this.eventLoggingService = eventLoggingService;
     }
 
     /**
@@ -44,6 +46,13 @@ public class RoleAssignmentService {
         //Add the role to the member within the guild in question.
         return guild.addRoleToMember(user, role)
                 .onSuccess(ignored -> {
+
+                    //Post a log event
+                    eventLoggingService.postEvent(embed -> embed.setTitle("A role was assigned to a user")
+                        .addField("Role", role.getName(), false)
+                        .addField("User", user.getName(), false)
+                    );
+
                     //Notify the user that his or her role has been added.
                     user.openPrivateChannel().queue(
                             channel -> {

@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.neoforged.discord.bots.pim.dba.DBA;
 import net.neoforged.discord.bots.pim.dba.model.PendingRoleRequest;
 import net.neoforged.discord.bots.pim.dba.model.RoleConfiguration;
+import net.neoforged.discord.bots.pim.service.EventLoggingService;
 import net.neoforged.discord.bots.pim.service.RoleAssignmentService;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,11 +27,13 @@ public class ApprovePIMRequestButtonHandler extends ListenerAdapter
 
     private final DBA                   dba;
     private final RoleAssignmentService roleAssignmentService;
+    private final EventLoggingService eventLoggingService;
 
-    public ApprovePIMRequestButtonHandler(DBA dba, RoleAssignmentService roleAssignmentService)
+    public ApprovePIMRequestButtonHandler(DBA dba, RoleAssignmentService roleAssignmentService, final EventLoggingService eventLoggingService)
     {
         this.dba = dba;
         this.roleAssignmentService = roleAssignmentService;
+        this.eventLoggingService = eventLoggingService;
     }
 
     @Override
@@ -39,6 +42,13 @@ public class ApprovePIMRequestButtonHandler extends ListenerAdapter
         if (!Objects.requireNonNull(event.getButton().getCustomId()).startsWith("approve-request/"))
         {
             LOGGER.debug("Button is not a approve request button");
+            return;
+        }
+
+        if (event.getMember() == null)
+        {
+            LOGGER.warn("Approval requested without user interaction.");
+            event.getHook().editOriginal("This request requires a user to approve the interaction").queue();
             return;
         }
 
@@ -99,10 +109,17 @@ public class ApprovePIMRequestButtonHandler extends ListenerAdapter
                                                 })
                                         ).queue();
 
+                                    eventLoggingService.postEvent(embed -> embed.setTitle("A request has been approved")
+                                        .addField("Requested by", user.getName(), false)
+                                        .addField("Role", roleConfiguration.name, false)
+                                        .addField("Justification", request.reason, false)
+                                        .addField("Approved by", event.getMember().getEffectiveName(), false));
+
                                     LOGGER.info("Role request of: {}, for: {}, by: {} has been approved. Processing complete.",
                                         request.role,
                                         user.getName(),
                                         event.getMember().getEffectiveName());
+
                                 }
                             );
                         }

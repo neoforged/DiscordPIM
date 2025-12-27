@@ -19,13 +19,12 @@ public class IllegalRoleAssignmentService
     private static final Logger LOGGER = LoggerFactory.getLogger(IllegalRoleAssignmentService.class);
 
     private final DBA    dba;
-    @Nullable
-    private final String loggingChannelId;
+    private final EventLoggingService eventLoggingService;
 
-    public IllegalRoleAssignmentService(final DBA dba, @Nullable final String loggingChannelId)
+    public IllegalRoleAssignmentService(final DBA dba, final EventLoggingService eventLoggingService)
     {
         this.dba = dba;
-        this.loggingChannelId = loggingChannelId;
+        this.eventLoggingService = eventLoggingService;
     }
 
     public void onStartup(JDA bot)
@@ -40,29 +39,6 @@ public class IllegalRoleAssignmentService
         else
         {
             LOGGER.info("Processing: {} roles...", roleConfigurations.size());
-        }
-
-        var guilds = roleConfigurations
-            .stream()
-            .map(r -> r.guildId)
-            .collect(Collectors.toSet());
-
-        for (final Long guildId : guilds)
-        {
-            var guild = bot.getGuildById(guildId);
-            if (guild == null)
-            {
-                LOGGER.info("Guild with id: {} does not exist!", guildId);
-                return;
-            }
-
-            LOGGER.info("Loading membercache for: {}...", guild.getName());
-
-            //Normally we don't call get on this, but we are 100% sure not on the event thread
-            //as this is invoked from the main thread!
-            //So we hold the main thread while we load the members of the guild
-            //We need to do this so that the member cache is filled
-            guild.loadMembers().get();
         }
 
         roleConfigurations.forEach(roleConfig -> {
@@ -88,18 +64,19 @@ public class IllegalRoleAssignmentService
             roles.forEach(role -> {
                 LOGGER.info("Invalidating role: {}", role.getName());
 
-                var membersWithRole = guild.getMembersWithRoles(role);
-                if (membersWithRole.isEmpty())
-                {
-                    LOGGER.info("No members found with role: {}", role.getName());
-                }
-                else
-                {
-                    LOGGER.warn("Checking: {} for validation...", membersWithRole.size());
-                }
-                membersWithRole.forEach(member -> {
-                    LOGGER.info("Checking member: {} for role: {} in validation...", member.getEffectiveName(), role.getName());
-                    checkAndHandle(member.getUser(), role, guild);
+                guild.findMembersWithRoles(role).onSuccess(membersWithRole -> {
+                    if (membersWithRole.isEmpty())
+                    {
+                        LOGGER.info("No members found with role: {}", role.getName());
+                    }
+                    else
+                    {
+                        LOGGER.warn("Checking: {} for validation...", membersWithRole.size());
+                    }
+                    membersWithRole.forEach(member -> {
+                        LOGGER.info("Checking member: {} for role: {} in validation...", member.getEffectiveName(), role.getName());
+                        checkAndHandle(member.getUser(), role, guild);
+                    });
                 });
             });
         });
@@ -136,18 +113,15 @@ public class IllegalRoleAssignmentService
             success -> {
                 //Role removed, remove it from the DB.
                 LOGGER.warn("Removed unauthorized role from user: {} ({}). Role: {}", user.getIdLong(), user.getName(), role.getName());
+
+                //Post a log event.
+                eventLoggingService.postEvent(embed -> {
+                    embed.setTitle("User: " + user.getName() + " tried to add protected role!")
+                        .addField("Role", role.getName(), false)
+                        .addField("User", user.getName(), false);
+                });
             }
         );
-        if (loggingChannelId != null)
-        {
-            Objects.requireNonNull(guild.getTextChannelById(loggingChannelId))
-                .sendMessageEmbeds(new EmbedBuilder()
-                    .setTitle("User: " + user.getName() + " tried to add protected role!")
-                    .addField("Role", role.getName(), false)
-                    .addField("User ID", user.getId(), false)
-                    .build())
-                .queue();
-        }
     }
 
     private boolean isManagedRole(Role role)

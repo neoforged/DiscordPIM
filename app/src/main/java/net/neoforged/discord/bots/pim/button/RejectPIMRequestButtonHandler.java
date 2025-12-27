@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.neoforged.discord.bots.pim.dba.DBA;
 import net.neoforged.discord.bots.pim.dba.model.PendingRoleRequest;
 import net.neoforged.discord.bots.pim.dba.model.RoleConfiguration;
+import net.neoforged.discord.bots.pim.service.EventLoggingService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,15 +23,23 @@ public class RejectPIMRequestButtonHandler extends ListenerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(RejectPIMRequestButtonHandler.class);
 
     private final DBA dba;
+    private final EventLoggingService eventLoggingService;
 
-    public RejectPIMRequestButtonHandler(DBA dba) {
+    public RejectPIMRequestButtonHandler(DBA dba, final EventLoggingService eventLoggingService) {
         this.dba = dba;
+        this.eventLoggingService = eventLoggingService;
     }
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         if (!Objects.requireNonNull(event.getButton().getCustomId()).startsWith("reject-request/")) {
             LOGGER.debug("Button is not a reject request button");
+            return;
+        }
+
+        if (event.getMember() == null) {
+            LOGGER.warn("Rejection requested without user interaction...");
+            event.getHook().editOriginal("A rejection of a request requires a user interaction.").queue();
             return;
         }
 
@@ -46,6 +55,7 @@ public class RejectPIMRequestButtonHandler extends ListenerAdapter {
                 event.getHook().editOriginal("You can not reject your own request!").queue();
                 return;
             }
+
             //Get the configuration for the role that the user is interested in.
             final RoleConfiguration roleConfiguration = dba.getRoleConfiguration(request.role, request.guildId);
             if (roleConfiguration == null) {
@@ -92,6 +102,13 @@ public class RejectPIMRequestButtonHandler extends ListenerAdapter {
                             return oldComponent;
                         })
                 ).queue();
+
+            eventLoggingService.postEvent(embed -> embed.setTitle("A request has been rejected")
+                .addField("Requested by", user.getName(), false)
+                .addField("Role", request.role, false)
+                .addField("Justification", request.reason, false)
+                .addField("Rejected by", event.getMember().getEffectiveName(), false));
+
             LOGGER.info("Role request of: {}, for: {}, by: {} has been rejected or cancelled. Processing complete.", request.role, user.getName(), event.getMember().getEffectiveName());
         });
     }

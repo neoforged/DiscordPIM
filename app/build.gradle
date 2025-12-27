@@ -10,13 +10,15 @@ repositories {
 
 dependencies {
     implementation libs.bundles.jda
-    implementation libs.bundles.sqlite
     implementation libs.bundles.logging
     implementation libs.bundles.guava
     implementation libs.bundles.wisp
+    implementation libs.bundles.jdbi
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-// Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -24,6 +26,9 @@ java {
 }
 
 application {
-    // Define the main class for the application.
     mainClass = 'net.neoforged.discord.bots.pim.PIMBot'
+}
+
+test {
+    useJUnitPlatform()
 }

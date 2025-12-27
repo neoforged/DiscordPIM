@@ -25,10 +25,12 @@ public class JobExecutionService implements EventListener {
     private final Scheduler scheduler = new Scheduler();
     private final DBA dba;
     private final JDA jda;
+    private final EventLoggingService eventLoggingService;
 
-    public JobExecutionService(DBA dba, JDA jda) {
+    public JobExecutionService(DBA dba, JDA jda, final EventLoggingService eventLoggingService) {
         this.dba = dba;
         this.jda = jda;
+        this.eventLoggingService = eventLoggingService;
 
         //We run exactly one minute after the completion of our last job.
         scheduler.schedule(
@@ -56,6 +58,12 @@ public class JobExecutionService implements EventListener {
                                 //Role removed, remove it from the DB.
                                 LOGGER.warn("Removed role {} from member {}", job.roleId, member);
                                 dba.removeRemovalJob(job);
+
+                                //And last but not least post a log event
+                                eventLoggingService.postEvent(embed -> embed.setTitle("A role request has run out and the role has been disabled")
+                                    .addField("Role", role.getName(), false)
+                                    .addField("User", member.getEffectiveName(), false)
+                                );
                             }
                     );
                 } else {

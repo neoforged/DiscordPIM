@@ -1,8 +1,10 @@
 package net.neoforged.discord.bots.pim.commands;
 
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.neoforged.discord.bots.pim.dba.DBA;
+import net.neoforged.discord.bots.pim.service.EventLoggingService;
 import net.neoforged.discord.bots.pim.service.IllegalRoleAssignmentService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -19,10 +21,12 @@ public class PimConfigureRequestHandler extends ListenerAdapter {
 
     private final DBA dba;
     private final IllegalRoleAssignmentService illegalRoleAssignmentService;
+    private final EventLoggingService eventLoggingService;
 
-    public PimConfigureRequestHandler(DBA dba, final IllegalRoleAssignmentService illegalRoleAssignmentService) {
+    public PimConfigureRequestHandler(DBA dba, final IllegalRoleAssignmentService illegalRoleAssignmentService, final EventLoggingService eventLoggingService) {
         this.dba = dba;
         this.illegalRoleAssignmentService = illegalRoleAssignmentService;
+        this.eventLoggingService = eventLoggingService;
     }
 
     @Override
@@ -39,6 +43,12 @@ public class PimConfigureRequestHandler extends ListenerAdapter {
 
         if (event.getGuild() == null) {
             LOGGER.warn("PIM Configuration was not send by guild!");
+            return;
+        }
+
+        if (!event.getMember().hasPermission(Permission.MANAGE_ROLES)) {
+            event.getInteraction().reply("You are need role management permissions to execute this command").queue();
+            LOGGER.warn("User: {} tried to configure roles without permission!", event.getMember().getEffectiveName());
             return;
         }
 
@@ -90,6 +100,20 @@ public class PimConfigureRequestHandler extends ListenerAdapter {
                     approversRole.getName()
             );
         }
+
+        eventLoggingService.postEvent(embed -> {
+            embed.setTitle("A role has been configured for PIM interaction")
+                .addField("Role", role.getName(), false)
+                .addField("Requires Approval", requiresApproval ? "Yes" : "No", false)
+                .addField("Granted for", grantedTimeInSeconds + " Seconds", false);
+
+            if (requiresApproval) {
+                embed.addField("Approval Channel", approvalChannel.getName(), false)
+                    .addField("Approvers", approversRole.getName(), false);
+            }
+
+            embed.addField("By", event.getMember().getEffectiveName(), false);
+        });
 
         illegalRoleAssignmentService.onRoleConfigurationUpserted(role, event.getGuild());
     }
