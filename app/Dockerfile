@@ -1,4 +1,4 @@
-FROM openjdk:21
+FROM amazoncorretto:21
 ENV DISCORD_TOKEN="not_set"
 COPY ./build/libs/app-all.jar /opt/app/
 VOLUME /opt/app/data
