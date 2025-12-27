@@ -1,0 +1,40 @@
+replicaCount: 1
+
+app:
+  image:
+    repository: ghcr.io/neoforged/discordpim/app
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources: {}
+  env: []
+  volumeSize: 5Gi
+  service:
+    type: ClusterIP
+    port: 8080
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    storageClass: ""
+    size: 5Gi
+    mountPath: /opt/app/data
+
+docs:
+  image:
+    repository: ghcr.io/neoforged/discordpim/docs
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources: {}
+  env: []
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: true
+    className: ""
+    annotations: {}
+    hosts:
+      - host: docs.local
+        paths:
+          - "/"
+    tls: []

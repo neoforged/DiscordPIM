@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "discordpim.fullname" . }}-docs
+  labels:
+    app: {{ include "discordpim.name" . }}
+    component: docs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "discordpim.name" . }}
+      component: docs
+  template:
+    metadata:
+      labels:
+        app: {{ include "discordpim.name" . }}
+        component: docs
+    spec:
+      containers:
+        - name: docs
+          image: "{{ .Values.docs.image.repository }}:{{ .Values.docs.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.docs.image.pullPolicy }}
+          env:
+            {{ toYaml .Values.docs.env | nindent 12 }}
+          resources:
+            {{ toYaml .Values.docs.resources | nindent 12 }}
+

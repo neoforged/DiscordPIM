@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "discordpim.fullname" . }}-app
+  labels:
+    app: {{ include "discordpim.name" . }}
+    component: app
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "discordpim.name" . }}
+      component: app
+  template:
+    metadata:
+      labels:
+        app: {{ include "discordpim.name" . }}
+        component: app
+    spec:
+      containers:
+        - name: app
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          env:
+            {{ toYaml .Values.app.env | nindent 12 }}
+          resources:
+            {{ toYaml .Values.app.resources | nindent 12 }}
+          volumeMounts:
+            - name: app-data
+              mountPath: {{ .Values.app.persistence.mountPath }}
+      volumes:
+        - name: app-data
+          persistentVolumeClaim:
+            claimName: {{ include "discordpim.fullname" . }}-app-data
