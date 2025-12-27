@@ -33,3 +33,4 @@ node_modules
 **/node_modules/**
 
 data
+!/gradle/wrapper/gradle-wrapper.jar
