@@ -3,6 +3,7 @@ package net.neoforged.discord.bots.pim.commands;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.neoforged.discord.bots.pim.dba.DBA;
+import net.neoforged.discord.bots.pim.service.IllegalRoleAssignmentService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,9 +18,11 @@ public class PimConfigureRequestHandler extends ListenerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(PimConfigureRequestHandler.class);
 
     private final DBA dba;
+    private final IllegalRoleAssignmentService illegalRoleAssignmentService;
 
-    public PimConfigureRequestHandler(DBA dba) {
+    public PimConfigureRequestHandler(DBA dba, final IllegalRoleAssignmentService illegalRoleAssignmentService) {
         this.dba = dba;
+        this.illegalRoleAssignmentService = illegalRoleAssignmentService;
     }
 
     @Override
@@ -39,14 +42,21 @@ public class PimConfigureRequestHandler extends ListenerAdapter {
             return;
         }
 
-        event.deferReply().queue();
-
         //Get all parameters.
         final var role = Objects.requireNonNull(event.getOption("role")).getAsRole();
         final var requiresApproval = Objects.requireNonNull(event.getOption("requires-approval")).getAsBoolean();
         final var grantedTimeInSeconds = Objects.requireNonNull(event.getOption("granted-time-in-seconds")).getAsInt();
         final var approvalChannel = Objects.requireNonNull(event.getOption("approval-channel")).getAsChannel();
         final var approversRole = Objects.requireNonNull(event.getOption("approvers-role")).getAsRole();
+
+        //Roles need to at least be assigned for a single second
+        if (grantedTimeInSeconds <= 0) {
+            event.getInteraction().reply("Failed to create role configuration. It needs to be granted for at least one second!").queue();
+            return;
+        }
+
+        //Next up are a bunch of DB requests, which can take a bit, lets defer the result.
+        event.deferReply().queue();
 
         //Check if we have an existing.
         final var existing = dba.getRoleConfiguration(role.getName(), event.getGuild().getIdLong());
@@ -81,6 +91,6 @@ public class PimConfigureRequestHandler extends ListenerAdapter {
             );
         }
 
-
+        illegalRoleAssignmentService.onRoleConfigurationUpserted(role, event.getGuild());
     }
 }

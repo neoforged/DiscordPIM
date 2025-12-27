@@ -34,14 +34,15 @@ public class RoleAssignmentService {
         //Get the role by its name.
         final Role role = guild.getRolesByName(roleConfiguration.name,  false).getFirst();
 
+        if (roleConfiguration.grantedTimeInSeconds <= 0) {
+            throw new IllegalStateException("Tried to assign an invalid not assignable role!");
+        }
+
         //Add the role to the member within the guild in question.
         return guild.addRoleToMember(user, role)
                 .onSuccess(ignored -> {
-                    if (roleConfiguration.grantedTimeInSeconds > 0) {
-                        //This role is not infinitely holdable, so we schedule a removal in the database.
-                        //The database will automatically set a created timestamp which we use to check if it has run out using the granted time in seconds every minute.
-                        dba.createRoleRemovalJob(role.getName(), roleConfiguration.guildId, role.getIdLong(), user.getIdLong(), roleConfiguration.grantedTimeInSeconds);
-                    }
+                    //The database will automatically set a created timestamp which we use to check if it has run out using the granted time in seconds every minute.
+                    dba.createRoleRemovalJob(role.getName(), roleConfiguration.guildId, role.getIdLong(), user.getIdLong(), roleConfiguration.grantedTimeInSeconds);
 
                     //Notify the user that his or her role has been added.
                     user.openPrivateChannel().queue(

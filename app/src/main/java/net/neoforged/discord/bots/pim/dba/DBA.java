@@ -54,7 +54,7 @@ public class DBA {
         return this.db.first(PendingRoleRequest.class, "role = ? && userId = ? && guildId = ?", role, userId, guildId);
     }
 
-    public RoleConfiguration createRoleConfiguration(String name, long guildId, boolean requiresApproval, int grantedTimeInSeconds, long approvalChannelId, long approvesRoleId) {
+    public void createRoleConfiguration(String name, long guildId, boolean requiresApproval, int grantedTimeInSeconds, long approvalChannelId, long approvesRoleId) {
         LOGGER.debug("Creating role configuration for: {}, {}, {}, {}, {}, {}", name, guildId, requiresApproval, grantedTimeInSeconds, approvalChannelId, approvesRoleId);
         final var configuration = new RoleConfiguration(p -> {
             p.name = name;
@@ -65,7 +65,12 @@ public class DBA {
             p.approvalRoleId = approvesRoleId;
         });
         db.insert(configuration);
-        return configuration;
+    }
+
+    public List<RoleConfiguration> getRoleConfigurations()
+    {
+        LOGGER.debug("Retrieving all role configurations");
+        return db.findAll(RoleConfiguration.class);
     }
 
     public PendingRoleRequest getPendingRoleRequestById(long id) {
@@ -82,6 +87,13 @@ public class DBA {
         LOGGER.debug("Getting role removal jobs to run: {}", System.currentTimeMillis());
         return db.find(RoleRemovalJob.class, options -> {
             options.where("createdAt + (grantedTimeInSeconds * 1000) < ?",  System.currentTimeMillis());
+        });
+    }
+
+    public List<RoleRemovalJob> getOpenRemovalJobs() {
+        LOGGER.debug("Getting open removal jobs: {}", System.currentTimeMillis());
+        return db.find(RoleRemovalJob.class, options -> {
+            options.where("createdAt + (grantedTimeInSeconds * 1000) > ?",  System.currentTimeMillis());
         });
     }
 
