@@ -67,12 +67,20 @@ public class IllegalRoleAssignmentService
     }
 
     public void checkAndHandle(User user, Role role, Guild guild) {
+        LOGGER.info("Checking role assignment for: {} role: {} in: {}", user.getName(), role.getName(), guild.getName());
         if (!isManagedRole(role))
+        {
+            LOGGER.info("Role was not a managed role.");
             return;
+        }
 
         if (wasApproved(user, role))
+        {
+            LOGGER.info("Role was approved");
             return;
+        }
 
+        LOGGER.warn("Role was not approved. Unassigning");
         guild.removeRoleFromMember(user, role).queue(
             success -> {
                 //Role removed, remove it from the DB.
