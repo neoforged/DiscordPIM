@@ -2,6 +2,15 @@ apiVersion: v1
 entries:
   discordpim:
   - apiVersion: v2
+    appVersion: 0.1.16
+    created: "2025-12-27T19:13:59.797163717Z"
+    description: A Helm chart for DiscordPIM app and docs
+    digest: a578be420084e2626c2fcded3176c440c831b1982bf51ca3170925dee2da838c
+    name: discordpim
+    urls:
+    - https://github.com/neoforged/DiscordPIM/releases/download/discordpim-0.1.16/discordpim-0.1.16.tgz
+    version: 0.1.16
+  - apiVersion: v2
     appVersion: 0.1.15
     created: "2025-12-27T19:09:29.980548199Z"
     description: A Helm chart for DiscordPIM app and docs
@@ -145,4 +154,4 @@ entries:
     urls:
     - https://github.com/neoforged/DiscordPIM/releases/download/discordpim-0.0.2/discordpim-0.0.2.tgz
     version: 0.0.2
-generated: "2025-12-27T19:09:29.980665368Z"
+generated: "2025-12-27T19:13:59.797292918Z"
