@@ -38,7 +38,6 @@ public class RoleAssignmentService {
             throw new IllegalStateException("Tried to assign an invalid not assignable role!");
         }
 
-
         //The database will automatically set a created timestamp which we use to check if it has run out using the granted time in seconds every minute.
         dba.createRoleRemovalJob(role.getName(), roleConfiguration.guildId, role.getIdLong(), user.getIdLong(), roleConfiguration.grantedTimeInSeconds);
 

@@ -1,5 +1,6 @@
 package net.neoforged.discord.bots.pim.button;
 
+import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -78,6 +79,19 @@ public class RejectPIMRequestButtonHandler extends ListenerAdapter {
             });
 
             dba.deletePendingRoleRequest(request);
+
+            event.getMessage()
+                .editMessageComponents(
+                    event.getMessage().getComponentTree()
+                        .replace(oldComponent -> {
+                            if (oldComponent instanceof Button button)
+                            {
+                                return button.asDisabled();
+                            }
+
+                            return oldComponent;
+                        })
+                ).queue();
             LOGGER.info("Role request of: {}, for: {}, by: {} has been rejected or cancelled. Processing complete.", request.role, user.getName(), event.getMember().getEffectiveName());
         });
     }
