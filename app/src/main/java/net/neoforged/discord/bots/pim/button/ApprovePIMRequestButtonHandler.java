@@ -32,12 +32,12 @@ public class ApprovePIMRequestButtonHandler extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
-        if (!Objects.requireNonNull(event.getButton().getId()).startsWith("approve-request/")) {
+        if (!Objects.requireNonNull(event.getButton().getCustomId()).startsWith("approve-request/")) {
             LOGGER.debug("Button is not a approve request button");
             return;
         }
 
-        final long requestId = Long.parseLong(event.getButton().getId().substring("approve-request/".length()));
+        final long requestId = Long.parseLong(event.getButton().getCustomId().substring("approve-request/".length()));
 
         LOGGER.debug("Approve button was pressed for request: {}", requestId);
         event.deferReply().queue(success -> {

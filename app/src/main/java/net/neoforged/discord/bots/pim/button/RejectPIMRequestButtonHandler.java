@@ -28,12 +28,12 @@ public class RejectPIMRequestButtonHandler extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
-        if (!Objects.requireNonNull(event.getButton().getId()).startsWith("reject-request/")) {
+        if (!Objects.requireNonNull(event.getButton().getCustomId()).startsWith("reject-request/")) {
             LOGGER.debug("Button is not a reject request button");
             return;
         }
 
-        final long requestId = Long.parseLong(event.getButton().getId().substring("reject-request/".length()));
+        final long requestId = Long.parseLong(event.getButton().getCustomId().substring("reject-request/".length()));
 
         LOGGER.debug("Reject button was pressed for request: {}", requestId);
         event.deferReply().queue(success -> {
