@@ -44,10 +44,6 @@ jobs:
   build-app:
     name: Build Java/Gradle App
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./app
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
