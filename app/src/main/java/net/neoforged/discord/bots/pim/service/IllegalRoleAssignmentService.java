@@ -43,27 +43,28 @@ public class IllegalRoleAssignmentService
                 LOGGER.info("Guild with id: {} does not exist!", roleConfig.guildId);
                 return;
             }
-
-            var roles = guild.getRolesByName(roleConfig.name, false);
-            if (roles.isEmpty()) {
-                LOGGER.error("Could not find roles in guild: {} with name: {}", guild.getName(), roleConfig.name);
-                return;
-            } else {
-                LOGGER.info("Checking: {} active roles for invalidation...", roles.size());
-            }
-
-            roles.forEach(role -> {
-                LOGGER.info("Invalidating role: {}", role.getName());
-
-                var membersWithRole = guild.getMembersWithRoles(role);
-                if (membersWithRole.isEmpty()) {
-                    LOGGER.info("No members found with role: {}", role.getName());
+            guild.loadMembers().onSuccess(members -> {
+                var roles = guild.getRolesByName(roleConfig.name, false);
+                if (roles.isEmpty()) {
+                    LOGGER.error("Could not find roles in guild: {} with name: {}", guild.getName(), roleConfig.name);
+                    return;
                 } else {
-                    LOGGER.warn("Checking: {} for validation...", membersWithRole.size());
+                    LOGGER.info("Checking: {} active roles for invalidation...", roles.size());
                 }
-                membersWithRole.forEach(member -> {
-                    LOGGER.info("Checking member: {} for role: {} in validation...", member.getEffectiveName(), role.getName());
-                    checkAndHandle(member.getUser(), role, guild);
+
+                roles.forEach(role -> {
+                    LOGGER.info("Invalidating role: {}", role.getName());
+
+                    var membersWithRole = guild.getMembersWithRoles(role);
+                    if (membersWithRole.isEmpty()) {
+                        LOGGER.info("No members found with role: {}", role.getName());
+                    } else {
+                        LOGGER.warn("Checking: {} for validation...", membersWithRole.size());
+                    }
+                    membersWithRole.forEach(member -> {
+                        LOGGER.info("Checking member: {} for role: {} in validation...", member.getEffectiveName(), role.getName());
+                        checkAndHandle(member.getUser(), role, guild);
+                    });
                 });
             });
         });
