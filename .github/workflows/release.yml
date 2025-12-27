@@ -146,7 +146,7 @@ jobs:
         with:
           context: ./docs
           file: ./docs/Dockerfile
-          target: caddy
+          target: serve
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.IMAGE_PATH }}:${{ needs.tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
